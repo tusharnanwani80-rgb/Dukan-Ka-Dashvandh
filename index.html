@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Dashvand Wallet Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        app: {
+                            bg: '#F2F2F7', card: '#FFFFFF', dark: '#1C1C1E',
+                            mint: '#E8F5E9', mintText: '#1B5E20',
+                            gray: '#8E8E93', border: '#E5E5EA'
+                        }
+                    },
+                    boxShadow: {
+                        'float': '0 10px 40px -10px rgba(0,0,0,0.08)',
+                        'modal': '0 -10px 40px rgba(0,0,0,0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body, html {
+            background-color: #000;
+            margin: 0; padding: 0; height: 100%;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #app-root {
+            max-width: 440px; margin: 0 auto;
+            background-color: #F2F2F7; min-height: 100vh;
+            position: relative; overflow-x: hidden;
+            display: flex; flex-direction: column;
+        }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .input-dark::placeholder { color: rgba(255,255,255,0.3); }
+        .input-light::placeholder { color: rgba(27, 94, 32, 0.3); }
+
+        .cat-pill { transition: all 0.25s ease; color: #8E8E93; background: #E5E5EA; }
+        .cat-pill.active { background: #1C1C1E; color: #FFFFFF; box-shadow: 0 4px 12px rgba(28,28,30,0.2); }
+
+        .reveal {
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0; transform: translateY(20px);
+        }
+        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="app-root">
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-10">
+            
+            <!-- Dashboard Header Section -->
+            <header class="px-6 pt-12 pb-6 reveal" style="animation-delay: 0.1s;">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <p class="text-app-gray text-sm font-medium">Dashvand Ledger</p>
+                        <h1 class="text-2xl font-bold text-app-dark flex items-center gap-2">
+                            Overview 
+                            <span id="syncDot" class="w-2 h-2 rounded-full bg-red-500 transition-colors"></span>
+                        </h1>
+                    </div>
+                    <button id="openSettings" class="w-10 h-10 bg-white rounded-full flex justify-center items-center shadow-sm hover:scale-105 transition-transform active:scale-95">
+                        <i data-lucide="settings" class="w-5 h-5 text-app-dark"></i>
+                    </button>
+                </div>
+
+                <div class="flex flex-col mb-4">
+                    <span class="text-xs font-bold uppercase tracking-widest text-app-gray mb-1">Lifetime Pending</span>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-semibold text-app-gray">₹</span>
+                        <h2 id="lifetimePending" class="text-[56px] font-extrabold tracking-tighter leading-none text-app-dark">0.00</h2>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Chart Section -->
+            <section class="px-4 mb-6 reveal" style="animation-delay: 0.2s;">
+                <div class="bg-white rounded-[32px] p-5 shadow-float relative">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-app-dark text-sm">7-Day Generation</h3>
+                        <button id="refreshDataBtn" class="text-app-gray hover:text-app-dark transition-colors">
+                            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="h-44 w-full relative">
+                        <div id="chartLoader" class="absolute inset-0 bg-white z-10 flex items-center justify-center rounded-xl">
+                            <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-app-gray"></i>
+                        </div>
+                        <canvas id="barChart"></canvas>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-4 pt-4 border-t border-app-border">
+                        <div class="text-left">
+                            <p class="text-xs text-app-gray font-medium">Total Generated</p>
+                            <p class="font-bold text-app-dark text-sm" id="totalGenerated">₹0.00</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-app-gray font-medium">Total Paid</p>
+                            <p class="font-bold text-emerald-600 text-sm" id="totalPaid">₹0.00</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transaction Input Form -->
+            <section class="px-4 reveal" style="animation-delay: 0.3s;">
+                <div class="flex justify-between items-center mb-3 px-2">
+                    <span class="font-bold text-sm text-app-dark">New Transaction</span>
+                    <input type="date" id="entryDate" class="bg-transparent text-sm font-semibold text-app-gray outline-none">
+                </div>
+                
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-3 px-2 mb-2" id="categoryTabs">
+                    <button type="button" data-val="Retail" class="cat-pill active px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Retail</button>
+                    <button type="button" data-val="Wholesale" class="cat-pill px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Wholesale</button>
+                    <button type="button" data-val="Online" class="cat-pill px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Online</button>
+                    <button type="button" data-val="Manual" class="cat-pill px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap">Manual</button>
+                </div>
+
+                <form id="trackerForm">
+                    <div class="bg-white p-2 rounded-[36px] shadow-float relative border border-app-border">
+                        
+                        <!-- Top: Sales Area (Mint) -->
+                        <div class="bg-app-mint rounded-[28px] p-5 pb-8 relative">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-bold text-app-mintText uppercase tracking-wider">Business Volume</label>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-2xl text-app-mintText/50 font-bold mt-1">₹</span>
+                                <input type="number" id="salesAmount" placeholder="0.00" step="0.01" min="0" 
+                                    class="input-light w-full bg-transparent text-[42px] font-extrabold text-app-mintText tracking-tight outline-none">
+                            </div>
+                            <div class="absolute bottom-4 right-5 text-xs font-bold text-app-mintText/80">
+                                Owed (10%): <span id="calcGenerated">₹0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Connector Icon -->
+                        <div class="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-[60%] z-10 pointer-events-none">
+                            <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
+                                <div class="w-8 h-8 bg-app-dark rounded-full flex items-center justify-center rotate-90 text-white">
+                                    <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom: Payment Area (Dark) -->
+                        <div class="bg-app-dark rounded-[28px] p-5 pt-8 mt-[-10px] relative">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-bold text-white/50 uppercase tracking-wider">Dashvand Payment</label>
+                                <button type="button" id="payExactBtn" class="text-[10px] font-bold bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded transition-colors active:scale-95">
+                                    Pay Exact Owed
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-2xl text-white/30 font-bold mt-1">₹</span>
+                                <input type="number" id="paidAmount" placeholder="0.00" step="0.01" min="0" 
+                                    class="input-dark w-full bg-transparent text-[42px] font-extrabold text-white tracking-tight outline-none">
+                            </div>
+                            
+                            <!-- Notes -->
+                            <div class="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
+                                <i data-lucide="align-left" class="w-4 h-4 text-app-gray"></i>
+                                <input type="text" id="entryNotes" placeholder="Transaction notes..." 
+                                    class="bg-transparent w-full text-sm outline-none text-white placeholder-app-gray font-medium">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="w-full mt-4 bg-app-dark hover:bg-black text-white font-bold py-4 rounded-full shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-2">
+                        Execute Transaction
+                    </button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <!-- SETTINGS BOTTOM SHEET -->
+    <div id="settingsOverlay" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 opacity-0" style="max-width: 440px; margin: 0 auto;"></div>
+    
+    <div id="settingsSheet" class="fixed bottom-0 inset-x-0 mx-auto max-w-[440px] bg-app-bg rounded-t-[32px] z-50 transform translate-y-full transition-transform duration-300 ease-out shadow-modal flex flex-col max-h-[90vh]">
+        <div class="p-6 overflow-y-auto no-scrollbar flex-1 pb-10">
+            <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6"></div>
+            
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-app-dark">Settings</h2>
+                <button id="closeSettings" class="w-8 h-8 bg-gray-200 rounded-full flex justify-center items-center active:scale-95">
+                    <i data-lucide="x" class="w-4 h-4 text-app-dark"></i>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-[24px] overflow-hidden">
+                <div class="flex justify-between items-center p-4 border-b border-app-border">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><i data-lucide="wallet" class="w-4 h-4 text-blue-500"></i></div>
+                        <span class="font-semibold text-sm text-app-dark">Currency</span>
+                    </div>
+                    <span class="text-sm font-bold text-app-gray">INR (₹)</span>
+                </div>
+                <div class="flex justify-between items-center p-4 border-b border-app-border">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center"><i data-lucide="database" class="w-4 h-4 text-emerald-500"></i></div>
+                        <span class="font-semibold text-sm text-app-dark">Data Connection</span>
+                    </div>
+                    <span id="settingsSyncStatus" class="text-xs font-bold text-red-500 uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Offline</span>
+                </div>
+                <button id="forceSyncBtn" class="w-full flex justify-between items-center p-4 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center"><i data-lucide="refresh-cw" class="w-4 h-4 text-purple-500"></i></div>
+                        <span class="font-semibold text-sm text-app-dark">Force Sync Data</span>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-app-gray"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-8 inset-x-0 mx-auto max-w-[300px] bg-app-dark text-white px-5 py-3 rounded-full shadow-float flex items-center justify-center gap-2 transform transition-all duration-300 -translate-y-24 opacity-0 z-[60]">
+        <i id="toastIcon" data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+        <span id="toastMessage" class="text-sm font-bold">Success</span>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURATION: PASTE YOUR GOOGLE SCRIPT URL HERE
+        // ==========================================
+        const GAS_WEB_APP_URL = "YOUR_WEB_APP_URL_HERE"; 
+
+        lucide.createIcons();
+        const formatMoney = (amt) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amt);
+
+        const form = document.getElementById('trackerForm');
+        const salesInput = document.getElementById('salesAmount');
+        const paidInput = document.getElementById('paidAmount');
+        const calcGen = document.getElementById('calcGenerated');
+        const syncDot = document.getElementById('syncDot');
+        const settingsSyncStatus = document.getElementById('settingsSyncStatus');
+        const chartLoader = document.getElementById('chartLoader');
+
+        let currentCategory = 'Retail';
+        let currentOwed = 0;
+        let myChart = null;
+        let ledgerData = { generated: 0, paid: 0, pending: 0, chartData: { labels: [], sales: [], dashvand: [] } };
+
+        document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+        function initChart() {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Sales', data: [], backgroundColor: '#E5E5EA', borderRadius: 6, barPercentage: 0.5 },
+                        { label: 'Dashvand', data: [], backgroundColor: '#1C1C1E', borderRadius: 6, barPercentage: 0.5 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false }, tooltip: { cornerRadius: 8, padding: 10 } },
+                    scales: {
+                        x: { grid: { display: false, drawBorder: false }, ticks: { font: { family: 'Inter', size: 10 } } },
+                        y: { display: false, grid: { display: false } }
+                    }
+                }
+            });
+        }
+        initChart();
+
+        document.querySelectorAll('.cat-pill').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentCategory = e.target.getAttribute('data-val');
+            });
+        });
+
+        salesInput.addEventListener('input', () => {
+            const val = parseFloat(salesInput.value) || 0;
+            currentOwed = (val * 0.25) * 0.10;
+            calcGen.innerText = formatMoney(currentOwed);
+        });
+
+        document.getElementById('payExactBtn').addEventListener('click', () => {
+            const totalToPay = currentOwed + Math.max(0, ledgerData.pending);
+            if(totalToPay > 0) paidInput.value = totalToPay.toFixed(2);
+        });
+
+        // 1. UPDATED: Fetch Cloud Data using Standard Fetch API
+        async function fetchCloudData() {
+            chartLoader.style.display = 'flex';
+            syncDot.classList.replace('bg-emerald-500', 'bg-red-500');
+
+            if (GAS_WEB_APP_URL === "YOUR_WEB_APP_URL_HERE" || GAS_WEB_APP_URL === "") {
+                setTimeout(() => {
+                    updateUI(); 
+                    syncDot.classList.replace('bg-emerald-500', 'bg-gray-400');
+                    settingsSyncStatus.innerText = "Offline Preview";
+                    settingsSyncStatus.className = "text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-100 px-2 py-1 rounded";
+                }, 500);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${GAS_WEB_APP_URL}?action=fetchDashboardData`);
+                ledgerData = await response.json();
+                updateUI();
+                syncDot.classList.replace('bg-red-500', 'bg-emerald-500');
+                settingsSyncStatus.innerText = "Online";
+                settingsSyncStatus.className = "text-xs font-bold text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded";
+            } catch(e) {
+                console.error("Fetch Error:", e);
+                syncDot.classList.replace('bg-emerald-500', 'bg-red-500');
+                settingsSyncStatus.innerText = "Connection Failed";
+                chartLoader.style.display = 'none';
+            }
+        }
+        fetchCloudData();
+
+        function updateUI() {
+            document.getElementById('lifetimePending').innerText = formatMoney(ledgerData.pending).replace('₹', '');
+            document.getElementById('totalGenerated').innerText = formatMoney(ledgerData.generated);
+            document.getElementById('totalPaid').innerText = formatMoney(ledgerData.paid);
+            
+            if(ledgerData.pending <= 0) {
+                document.getElementById('lifetimePending').classList.add('text-emerald-500');
+            } else {
+                document.getElementById('lifetimePending').classList.remove('text-emerald-500');
+            }
+
+            if(myChart && ledgerData.chartData && ledgerData.chartData.labels.length > 0) {
+                myChart.data.labels = ledgerData.chartData.labels;
+                myChart.data.datasets[0].data = ledgerData.chartData.sales;
+                myChart.data.datasets[1].data = ledgerData.chartData.dashvand;
+                myChart.update();
+            }
+            chartLoader.style.display = 'none';
+        }
+
+        document.getElementById('refreshDataBtn').addEventListener('click', fetchCloudData);
+
+        // 2. UPDATED: Submit Transaction using Standard Fetch API POST
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const salesVal = parseFloat(salesInput.value) || 0;
+            const paidVal = parseFloat(paidInput.value) || 0;
+            
+            if(salesVal === 0 && paidVal === 0) return showToast("Enter an amount.", true);
+
+            const payload = JSON.stringify([{
+                "Timestamp": new Date().toISOString(),
+                "Date": document.getElementById('entryDate').value,
+                "Category": currentCategory,
+                "Total Sales": salesVal,
+                "Dashvand Generated": (salesVal * 0.25) * 0.10,
+                "Dashvand Paid": paidVal,
+                "Notes": document.getElementById('entryNotes').value
+            }]);
+
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Processing`;
+            lucide.createIcons();
+
+            if (GAS_WEB_APP_URL === "https://script.google.com/macros/s/AKfycbx_en5Rcz_tzxK-XCsbic-dfyQQYqBAuqCgCd1nrkDRHorJVxMCM4H9UkovxvprBTlB/exec" || GAS_WEB_APP_URL === "") {
+                setTimeout(() => { showToast("Preview Recorded", false); resetForm(btn); }, 800);
+                return;
+            }
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: payload,
+                    // Crucial: Send as plain text to avoid CORS preflight errors with Google Apps Script
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    }
+                });
+                
+                const r = await response.json();
+                
+                if(r.status === 'success') {
+                    showToast("Transaction Recorded", false);
+                    fetchCloudData(); 
+                    resetForm(btn);
+                } else {
+                    showToast("Failed to save", true);
+                    resetForm(btn);
+                }
+            } catch(e) {
+                console.error("Post Error:", e);
+                showToast("Network Error", true);
+                resetForm(btn);
+            }
+        });
+
+        function resetForm(btn) {
+            btn.disabled = false;
+            btn.innerHTML = "Execute Transaction";
+            salesInput.value = ''; paidInput.value = ''; document.getElementById('entryNotes').value = '';
+            calcGen.innerText = '₹0.00'; currentOwed = 0;
+        }
+
+        // Settings Modal
+        const settingsSheet = document.getElementById('settingsSheet');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+
+        function openSettings() {
+            settingsOverlay.classList.remove('hidden');
+            setTimeout(() => { 
+                settingsOverlay.classList.replace('opacity-0', 'opacity-100');
+                settingsSheet.style.transform = 'translateY(0)';
+            }, 10);
+        }
+        function closeSettings() {
+            settingsSheet.style.transform = 'translateY(100%)';
+            settingsOverlay.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => { settingsOverlay.classList.add('hidden'); }, 300);
+        }
+
+        document.getElementById('openSettings').addEventListener('click', openSettings);
+        document.getElementById('closeSettings').addEventListener('click', closeSettings);
+        settingsOverlay.addEventListener('click', closeSettings);
+        document.getElementById('forceSyncBtn').addEventListener('click', () => { closeSettings(); fetchCloudData(); });
+
+        let toastTimer;
+        function showToast(msg, isErr) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            const icon = document.getElementById('toastIcon');
+            
+            if(isErr) {
+                icon.setAttribute('data-lucide', 'alert-circle');
+                icon.classList.replace('text-emerald-400', 'text-red-400');
+            } else {
+                icon.setAttribute('data-lucide', 'check-circle-2');
+                icon.classList.replace('text-red-400', 'text-emerald-400');
+            }
+            lucide.createIcons();
+
+            clearTimeout(toastTimer);
+            t.style.transform = 'translateY(0)';
+            t.style.opacity = '1';
+            toastTimer = setTimeout(() => { t.style.transform = 'translateY(-6rem)'; t.style.opacity = '0'; }, 3000);
+        }
+    </script>
+</body>
+</html>
