@@ -1,0 +1,25 @@
+{
+  "name": "Dashvand Wallet Pro",
+  "short_name": "DKD",
+  "description": "Dashvand tracking and transaction ledger.",
+  "start_url": "./",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#1C1C1E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-dashvand.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-dashvand.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
