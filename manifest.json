@@ -10,13 +10,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon-dashvandh.png",
+      "src": "icon-dashvand.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-dashvandh.png",
+      "src": "icon-dashvand.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
